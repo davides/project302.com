@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>302 Conversation Redirect</title>
+    <link rel="stylesheet" href="css/bootstrap.css">
+    <style media="screen">
+      body {
+        font-size: 30px;
+        font-family: Helvetica, sans-serif;
+      }
+
+      button.btn {
+        font-size: 60px;
+        padding: 60px 60px;
+        border-radius: 0;
+        width: 100%;
+        border-width: 0;
+      }
+
+      button:active {
+        outline: 0;
+      }
+
+      div.hero {
+        margin-bottom: 30px;
+        margin-top: 30px;
+      }
+
+      button#go {
+        width: 70%;
+        float: right;
+      }
+
+      button#nsfw {
+        width: 30%;
+        float: left;
+      }
+
+      button#nsfw.on {
+        background-color: #D95353;
+      }
+
+      button#nsfw.off {
+        background-color: #CCC;
+        text-decoration: line-through;
+      }
+
+      h1 {
+        font-size: 3em;
+        font-weight: bold;
+      }
+
+      p.subtitle {
+        font-weight: lighter;
+        font-size: 3em;
+        display: inline;
+      }
+
+      p#fact {
+        margin: 30px 0;
+        font-size: 3em;
+      }
+
+      a#toggle-about {
+        font-size: 3em;
+      }
+
+      div.footer {
+        min-height: 60px;
+      }
+
+      div.controls {
+        width: 100%;
+        margin: 30px 0;
+      }
+
+      @media (min-width: 700px) {
+        a#toggle-about, p.subtitle {
+          font-size: 30px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container hero">
+      <h1>302 Conversation Redirect</h1>
+      <p class="subtitle">Dreading the minefield of conversation over dinner this holiday?
+      When things start to go south, hit 'Redirect!' and blurt out whatever random fact comes
+      up to smoothly change the subject. Your family will thank you.</p>
+      <a href="#" id="toggle-about">Got it!</a>
+    </div>
+
+    <div class="container controls">
+
+    </div>
+
+    <div class="controls clearfix">
+      <button type="button" class="btn btn-primary off" id="nsfw">NSFW</button>
+      <button class="btn btn-primary" id="go">Redirect!</button>
+    </div>
+
+    <div class="container">
+      <p id="fact"></p>
+      <p class="pull-right" id="source">Source: <a href="#" id="source-anchor"><span id="source-name">Unknown</span></a></p>
+    </div>
+
+    <div class="container">
+      <hr>
+      <div class="footer"></div>
+    </div>
+
+    <script type="text/javascript" src="js/jquery-3.1.1.min.js"></script>
+    <script type="text/javascript" src="js/bootstrap.js"></script>
+    <script type="text/javascript">
+      var data = null;
+      var recentFacts = [];
+      var windowSize = 10;
+      var index = undefined;
+      var nsfw = false;
+      var about = true;
+
+      var btnAbout;
+      var btnNsfw;
+      var btnGo;
+      var pFact;
+      var spanSourceName;
+      var aSourceAnchor;
+
+      Array.prototype.contains = function(x) {
+        return this.filter(function(c) { return c == x; }).length > 0;
+      }
+
+      function updateRecentHistory(value) {
+        if (recentFacts.length == windowSize) recentFacts.shift();
+        recentFacts.push(value);
+      }
+
+      function randomInt(min, max) {
+        return Math.floor(Math.random() * (max - min)) + min;
+      }
+
+      function randomFact() {
+        while (index == undefined
+          || recentFacts.contains(index)
+          || (!nsfw && data.facts[index].nsfw == true)) {
+          index = randomInt(0, data.facts.length);
+        }
+        updateRecentHistory(index);
+        return data.facts[index];
+      }
+
+      function loadFact(callback) {
+        if (data) {
+          callback(null, randomFact());
+        } else {
+          $.ajax({
+            url: 'api/facts.json',
+            success: function(d, status, xhr) {
+              data = JSON.parse(xhr.responseText);
+              callback(null, randomFact());
+            },
+            error: function() {
+              callback(null, {
+                text: 'Oh noes! Something went wrong :(. Please try again.'
+              });
+            }
+          });
+        }
+      }
+
+      function renderFact(fact) {
+        pFact.html(fact.text);
+        spanSourceName.text(fact.sourceName || 'Unknown');
+        aSourceAnchor.attr('href', fact.source || '#');
+      }
+
+      function renderNsfw(enabled) {
+        if (enabled) {
+          btnNsfw.removeClass('off');
+          btnNsfw.addClass('on');
+        } else {
+          btnNsfw.removeClass('on');
+          btnNsfw.addClass('off');
+        }
+      }
+
+      function renderAbout(enabled) {
+        var el = $('p.subtitle');
+        if (enabled) {
+          el.show();
+          btnAbout.text('Got it!');
+        } else {
+          el.hide();
+          btnAbout.text('How It Works');
+        }
+      }
+
+      function showFact() {
+        loadFact(function(err, fact) { renderFact(fact); });
+      }
+
+      function toggleNsfw() {
+        renderNsfw(nsfw = !nsfw);
+      }
+
+      function toggleAbout() {
+        renderAbout(about = !about);
+      }
+
+      $(document).ready(function() {
+        btnAbout = $('a#toggle-about');
+        btnNsfw = $('button#nsfw');
+        btnGo = $('button#go');
+        pFact = $('p#fact');
+        spanSourceName = $('span#source-name');
+        aSourceAnchor = $('a#source-anchor');
+
+        btnAbout.click(toggleAbout);
+        btnNsfw.click(toggleNsfw);
+        btnGo.click(showFact);
+
+        toggleAbout();
+        showFact();
+      });
+    </script>
+  </body>
+</html>
